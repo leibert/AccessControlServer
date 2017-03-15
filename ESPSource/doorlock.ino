@@ -4,12 +4,8 @@
 #include "stdlib.h"
 #define RST_PIN 5 // RST-PIN for RC522 - RFID - SPI - Modul GPIO5 
 #define SS_PIN  4 // SDA-PIN for RC522 - RFID - SPI - Modul GPIO4 
-#define HOSTNAME "FRONTDOOR"          // Set the host name to whatever is appropriate. 
-
-extern "C" {
-#include "user_interface.h"
-}
-
+#define REDLED 0
+#define GREENLED 15
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance
 
@@ -49,6 +45,23 @@ int currentDELAY;
 int CMDCTRLposition;
 
 bool overrideFLAG;
+
+void LEDred(){
+  digitalWrite(GREENLED, LOW);
+  digitalWrite(REDLED, HIGH);
+}
+void LEDgreen(){
+  digitalWrite(GREENLED, HIGH);
+  digitalWrite(REDLED, LOW);
+}
+void LEDoff(){
+  digitalWrite(GREENLED, LOW);
+  digitalWrite(REDLED, LOW);
+}
+void LEDtoggle(){
+  digitalWrite(GREENLED, !digitalRead(GREENLED));
+  digitalWrite(REDLED, !digitalRead(GREENLED));
+}
 
 
 
@@ -206,7 +219,7 @@ void ticker() {
   }
 
 
-}u
+}
 
 
 
@@ -239,7 +252,8 @@ bool checkAUTH(String IDtocheck){
  
      Serial.println("CHECKING AGAINST");
      Serial.print(ID);
-
+     LEDtoggle();
+      
      if(IDtocheck == ID){
        Serial.println("!!!MATCH FOUND...AUTHED!!!");
        AUTHED=true;
@@ -263,11 +277,13 @@ bool checkAUTH(String IDtocheck){
 
 void unlockdoor(){
   digitalWrite(strikeRLY, 0);
-  delay(5000);
-  digitalWrite(strikeRLY, 1);
   return;
 }
 
+void lockdoor(){
+  digitalWrite(strikeRLY, 1);
+  return;
+}
 
 
 
@@ -292,32 +308,51 @@ void processRFIDcard(byte *buffer, byte bufferSize) {
 //  long decValue = strtol(arr, NULL, 32);
   //Serial.println(decValue);
   if(checkAUTH(String(decValue))){
+    LEDgreen();
     unlockdoor();
     doorOPENtx(String(decValue));
+    delay(5000);
+    lockdoor();
     
   }
-  else
+  else{
     Serial.println("NOT AUTHORIZED");
+    LEDred();
+  }
   //wait to prevent clash
   delay(500);
   
 }
 
 
+
+
 void setup() {
   pinMode(strikeRLY, OUTPUT);
   digitalWrite(strikeRLY, 1);
-  //pinMode(D3, INPUT);
+  //pinMode(9, INPUT_PULLUP);
+  pinMode(GREENLED, OUTPUT);
+  pinMode(REDLED, OUTPUT);
+  digitalWrite(GREENLED, LOW);
+  digitalWrite(REDLED, LOW);
 
 
   Serial.begin(9600);    // Initialize serial communications
   SPI.begin();           // Init SPI bus
   mfrc522.PCD_Init();    // Init MFRC522
 
+  LEDred();
+  delay(1000);
+  LEDgreen();
+  delay(1000);
+  LEDred();
+  delay(1000);
+  LEDoff();
+
   
-   String routername = "Testing123";
-  char* ourname = &routername[0];
-  wifi_station_set_hostname(ourname); 
+  WiFi.hostname("frontdoor");
+
+  
   startWIFI();//Connect to WIFI network and start server
 
   CMDCTRLhost = "192.168.0.31";
@@ -337,6 +372,7 @@ void setup() {
   TMRhours = 0;
 
   Serial.println("INIT COMPLETED");
+  LEDoff();
   delay(3000);
 }
 
@@ -354,11 +390,18 @@ void loop() {
  
 
   if (forceUpdate||(MCLKsec % 45 == 0 && secondFLAG==false)){
+    LEDred();
     getCMDCTRL(CMDCTRLaddr);
     secondFLAG=true;
     forceUpdate=false;
+    LEDgreen();
+    
   }
-  
+
+  if (MCLKsec % 2)
+    LEDgreen();
+  else
+    LEDoff();
  
 
     // Check if a client has connected
@@ -379,7 +422,7 @@ void loop() {
     // Show some details of the PICC (that is: the tag/card)
     Serial.println("CARD DETECTED");
     processRFIDcard(mfrc522.uid.uidByte, mfrc522.uid.size);
-    
+    LEDred();
     Serial.println();
     
     return;
@@ -404,6 +447,11 @@ void loop() {
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
     client.println("<body>");
+    if(digitalRead(9))
+      client.println("<BR><BR><h2>DOOR IS OPEN</h2>");
+    else
+      client.println("<BR><BR><h2>DOOR IS CLOSED</h2>");
+    
     client.println("<a href='/UNLOCK'>CLICK TO UNLOCK</a>");
     client.println("<BR><BR><h2>LAST IDS</h2>");
     client.println(last1);
