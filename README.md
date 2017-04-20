@@ -5,3 +5,10 @@
 
 **Reader / ESP8266 / Relay / DC-DC**<br>
 <img src="http://images.cwm.eml.cc/IOSstuff/IMG_20170308_110301759.jpg?variant=small" width="50%" height="50%">
+
+[**Video of unlocking door with Charlie Card**](https://goo.gl/photos/x4sf6CCCciUdmtHX6)
+
+When a card is sucessfully authenticated, the access server sends a command to a raspberry pi near the door to start playing walkon music.
+
+**Walk-on Music Server/Speaker**<br>
+<img src="http://images.cwm.eml.cc/IOSstuff/IMG_20170420_134530289.jpg?variant=small" width="50%" height="50%">
